@@ -1,13 +1,20 @@
-﻿document.getElementById('exportBtn').addEventListener('click', async () => {
+﻿// AI-Bridge v7.0 (Security & Stability)
+
+function handleLivenessError(statusElement) {
+    if (chrome.runtime.lastError) {
+        statusElement.innerText = "❌ Please REFRESH the page first!";
+        statusElement.style.color = "#f85149";
+        return true;
+    }
+    return false;
+}
+
+document.getElementById('exportBtn').addEventListener('click', async () => {
     const status = document.getElementById('status');
     status.innerText = "Extracting chat context...";
     let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     chrome.tabs.sendMessage(tab.id, { action: "extract" }, (response) => {
-        if (chrome.runtime.lastError) {
-            status.innerText = "❌ Reload page & try again.";
-            status.style.color = "#f85149";
-            return;
-        }
+        if (handleLivenessError(status)) return;
         if (response && response.success) {
             status.innerText = "✅ Context saved!";
             status.style.color = "#3fb950";
@@ -23,11 +30,7 @@ document.getElementById('injectBtn').addEventListener('click', async () => {
     status.innerText = "Injecting context...";
     let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     chrome.tabs.sendMessage(tab.id, { action: "inject" }, (response) => {
-        if (chrome.runtime.lastError) {
-            status.innerText = "❌ Reload page & try again.";
-            status.style.color = "#f85149";
-            return;
-        }
+        if (handleLivenessError(status)) return;
         if (response && response.success) {
             status.innerText = "🚀 Injection complete!";
             status.style.color = "#3fb950";
@@ -42,7 +45,19 @@ document.getElementById('settingsBtn').addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
 });
 
-// Feature 3: Package ZIP (v6.0 with Progress Bar)
+// v7.0 Security Firewall Checker
+function isPathSafe(path) {
+    const parts = path.split('/');
+    // Block any folder or file that starts with a dot (e.g. .env, .git, .DS_Store)
+    if (parts.some(part => part.startsWith('.'))) return false;
+    
+    // Block common heavy/binary dirs
+    const ignoreDirs = ['node_modules', 'dist', 'build', 'venv', '__pycache__'];
+    if (ignoreDirs.some(dir => parts.includes(dir))) return false;
+    
+    return true;
+}
+
 document.getElementById('folderPicker').addEventListener('change', async (event) => {
     const files = event.target.files;
     if (files.length === 0) return;
@@ -50,14 +65,12 @@ document.getElementById('folderPicker').addEventListener('change', async (event)
     status.innerText = "📦 Packaging ZIP... 0%";
     status.style.color = "#8957e5";
     
-    const ignoreDirs = ['node_modules', '.git', '.next', 'dist', 'build', 'venv', '__pycache__', '.env'];
-    
     try {
         let zip = new JSZip();
         let workspace = zip.folder("workspace");
         for (let i = 0; i < files.length; i++) {
             let path = files[i].webkitRelativePath;
-            if (ignoreDirs.some(dir => path.includes('/' + dir + '/'))) continue;
+            if (!isPathSafe(path)) continue; // SECURITY FIREWALL
             workspace.file(path, files[i]);
         }
         
@@ -65,7 +78,6 @@ document.getElementById('folderPicker').addEventListener('change', async (event)
             let context = result.aiBridgeContext || "No chat history extracted.";
             zip.file("context/chat_history.txt", context);
             
-            // v6.0 Progress Bar Implementation
             let content = await zip.generateAsync({type: "blob"}, function updateCallback(metadata) {
                 status.innerText = "📦 Packaging ZIP... " + metadata.percent.toFixed(0) + "%";
             });
@@ -74,7 +86,7 @@ document.getElementById('folderPicker').addEventListener('change', async (event)
             link.href = URL.createObjectURL(content);
             link.download = "AI-Bridge-Workspace.zip";
             link.click();
-            status.innerText = "✅ ZIP Downloaded!";
+            status.innerText = "✅ ZIP Downloaded safely!";
             status.style.color = "#3fb950";
         });
     } catch (e) {
@@ -83,7 +95,6 @@ document.getElementById('folderPicker').addEventListener('change', async (event)
     }
 });
 
-// Feature 4: Auto-Unzip & Inject (v6.0 XML-to-Markdown fix)
 document.getElementById('zipPicker').addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -96,8 +107,7 @@ document.getElementById('zipPicker').addEventListener('change', async (event) =>
         let workspaceMarkdown = "\n";
         let historyContent = "";
         
-        const textExtensions = ['js','html','css','py','md','txt','json','ts','jsx','tsx','c','cpp','java','php','rs','go'];
-        const ignoreDirs = ['node_modules', '.git', '.next', 'dist', 'build', 'venv', '__pycache__'];
+        const textExtensions = ['js','html','css','py','md','txt','json','ts','jsx','tsx','c','cpp','java','php','rs','go', 'sql'];
 
         let fileCount = Object.keys(zip.files).length;
         let processed = 0;
@@ -110,7 +120,12 @@ document.getElementById('zipPicker').addEventListener('change', async (event) =>
             }
 
             if (zipEntry.dir) continue;
-            if (ignoreDirs.some(dir => relativePath.includes(dir + '/'))) continue;
+            
+            // SECURITY FIREWALL
+            if (!isPathSafe(relativePath)) {
+                console.warn("AI-Bridge Blocked unsafe file: " + relativePath);
+                continue; 
+            }
 
             if (relativePath.includes('chat_history.txt')) {
                 historyContent = await zipEntry.async("string");
@@ -120,9 +135,7 @@ document.getElementById('zipPicker').addEventListener('change', async (event) =>
             let ext = relativePath.split('.').pop().toLowerCase();
             if (textExtensions.includes(ext) || !relativePath.includes('.')) {
                 if (zipEntry._data && zipEntry._data.uncompressedSize > 1048576) continue;
-                
                 let fileData = await zipEntry.async("string");
-                // v6.0 Fix: Markdown instead of pseudo-XML to prevent AI parsing breaks
                 workspaceMarkdown += \n### FILE:  + relativePath + \n\\\${ext}\n + fileData + \n\\\\n;
             }
         }
@@ -139,11 +152,7 @@ document.getElementById('zipPicker').addEventListener('change', async (event) =>
 
             let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             chrome.tabs.sendMessage(tab.id, { action: "inject_payload", payload: finalPayload }, (response) => {
-                if (chrome.runtime.lastError) {
-                    status.innerText = "❌ Reload page & try again.";
-                    status.style.color = "#f85149";
-                    return;
-                }
+                if (handleLivenessError(status)) return;
                 if (response && response.success) {
                     status.innerText = "🪄 Magic Injection Complete!";
                     status.style.color = "#3fb950";

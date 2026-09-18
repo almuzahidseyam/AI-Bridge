@@ -1,9 +1,9 @@
 ﻿{
   "manifest_version": 3,
   "name": "AI-Bridge: Context Transfer",
-  "version": "6.0",
-  "description": "Seamlessly transfer chat context between ChatGPT, Claude, Gemini, Perplexity, and HuggingFace. Features Smart Heuristics and Zip Progress.",
-  "permissions": ["activeTab", "scripting", "storage", "downloads"],
+  "version": "7.0",
+  "description": "Seamlessly transfer chat context between ChatGPT, Claude, Gemini, Perplexity, and HuggingFace. Features Smart Heuristics and Security Firewalls.",
+  "permissions": ["activeTab", "scripting", "storage", "downloads", "unlimitedStorage"],
   "host_permissions": [
     "*://chatgpt.com/*",
     "*://claude.ai/*",

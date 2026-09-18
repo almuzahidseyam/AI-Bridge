@@ -1,4 +1,5 @@
-﻿// AI-Bridge Advanced Content Script (v6.0 Architecture Update)
+﻿// AI-Bridge Advanced Content Script (v7.0 Security & Stability)
+
 function showToast(message, isSuccess = true) {
     let toast = document.createElement('div');
     toast.innerText = message;
@@ -17,72 +18,77 @@ function showToast(message, isSuccess = true) {
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
-function triggerReactEvent(payloadText) {
-    let script = document.createElement('script');
-    script.textContent = 
-        (function() {
-            let inputBox = document.querySelector('textarea, [contenteditable="true"], #prompt-textarea, rich-textarea, .ql-editor');
-            if (inputBox) {
-                if (inputBox.tagName === 'TEXTAREA') { inputBox.value =  + JSON.stringify(payloadText) + ; } 
-                else { inputBox.innerText =  + JSON.stringify(payloadText) + ; }
-                
-                inputBox.dispatchEvent(new Event('input', { bubbles: true }));
-                inputBox.dispatchEvent(new Event('change', { bubbles: true }));
-                
-                let reactProps = Object.keys(inputBox).find(k => k.startsWith('__reactProps$'));
-                if (reactProps && inputBox[reactProps].onChange) {
-                    inputBox[reactProps].onChange({target: inputBox});
+// v7.0: Native DOM Typing Simulation
+function nativeTypingSimulation(payloadText) {
+    let inputBox = document.querySelector('textarea, [contenteditable="true"], #prompt-textarea, rich-textarea, .ql-editor');
+    if (!inputBox) return false;
+
+    // Focus the input box first
+    inputBox.focus();
+    
+    // Use execCommand to simulate native pasting. This natively fires beforeinput, input, and change events!
+    let success = document.execCommand('insertText', false, payloadText);
+    
+    // If native execCommand fails (deprecated in some strict contexts), fallback to React hack
+    if (!success) {
+        console.warn("AI-Bridge: execCommand failed, falling back to React hack...");
+        let script = document.createElement('script');
+        script.textContent = 
+            (function() {
+                let box = document.querySelector('textarea, [contenteditable="true"], #prompt-textarea, rich-textarea, .ql-editor');
+                if (box) {
+                    if (box.tagName === 'TEXTAREA') { box.value =  + JSON.stringify(payloadText) + ; } 
+                    else { box.innerText =  + JSON.stringify(payloadText) + ; }
+                    box.dispatchEvent(new Event('input', { bubbles: true }));
+                    box.dispatchEvent(new Event('change', { bubbles: true }));
+                    let reactProps = Object.keys(box).find(k => k.startsWith('__reactProps$'));
+                    if (reactProps && box[reactProps].onChange) {
+                        box[reactProps].onChange({target: box});
+                    }
                 }
-            }
-        })();
-    ;
-    document.documentElement.appendChild(script);
-    script.remove();
+            })();
+        ;
+        document.documentElement.appendChild(script);
+        script.remove();
+    }
+    return true;
 }
 
 function handleInjection(megaPrompt, sendResponse) {
-    // Check Payload Size (v6.0 Warning)
     if (megaPrompt.length > 200000) {
         showToast("⚠️ Warning: Payload is massive. Browser might lag slightly.", false);
     }
     
     navigator.clipboard.writeText(megaPrompt).then(() => {
-        triggerReactEvent(megaPrompt);
+        nativeTypingSimulation(megaPrompt);
         showToast("🌉 AI-Bridge: Context Injected! Press Send.");
         sendResponse({ success: true });
     }).catch(err => {
-        triggerReactEvent(megaPrompt);
+        nativeTypingSimulation(megaPrompt);
         showToast("🌉 AI-Bridge: Context Injected! (Clipboard blocked)");
         sendResponse({ success: true });
     });
 }
 
-// v6.0 Smart Heuristic Parser
 function extractChatHeuristically(limit) {
     let parsedMessages = [];
     const url = window.location.hostname;
     
-    // Attempt standard selectors first
     let elements = [];
     if (url.includes('chatgpt.com')) elements = Array.from(document.querySelectorAll('[data-message-author-role]'));
     else if (url.includes('claude.ai')) elements = Array.from(document.querySelectorAll('.font-user-message, .font-claude-message'));
     else if (url.includes('gemini.google.com')) elements = Array.from(document.querySelectorAll('user-query, model-response'));
     else elements = Array.from(document.querySelectorAll('.prose'));
 
-    // If standard selectors fail (due to UI update), use Heuristics!
     if (elements.length === 0) {
-        console.warn("AI-Bridge: Standard selectors failed. Using smart heuristics.");
-        // Find alternating message-like blocks (e.g. paragraphs inside wide containers)
         let paragraphs = Array.from(document.querySelectorAll('p, .message, [role="row"]'));
-        elements = paragraphs.filter(p => p.innerText.length > 10); // filter out noise
+        elements = paragraphs.filter(p => p.innerText.length > 10);
     }
 
     if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
     
     elements.forEach((msg, idx) => {
         let role = (idx % 2 === 0) ? 'USER' : 'ASSISTANT';
-        
-        // ChatGPT precise role override
         if (msg.hasAttribute('data-message-author-role')) {
             role = msg.getAttribute('data-message-author-role').toUpperCase();
         } else if (msg.className && msg.className.includes('user')) {
@@ -99,7 +105,6 @@ function extractChatHeuristically(limit) {
         
         parsedMessages.push(\n\n---  + role +  ---\n + (text.trim() || msg.innerText.trim()));
     });
-    
     return parsedMessages;
 }
 
@@ -107,10 +112,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'extract') {
         chrome.storage.local.get(['contextLimit'], (result) => {
             let limit = result.contextLimit !== undefined ? result.contextLimit : 10;
-            
             try {
                 let parsedMessages = extractChatHeuristically(limit);
-
                 if (parsedMessages.length === 0) {
                     showToast("AI-Bridge: No chat found to extract!", false);
                     return sendResponse({ success: false });
@@ -122,7 +125,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
                 chrome.storage.local.set({ aiBridgeContext: chatContext }, () => {
                     if(chrome.runtime.lastError) {
-                        showToast("AI-Bridge Storage Error: Quota exceeded", false);
+                        showToast("AI-Bridge Storage Error: " + chrome.runtime.lastError.message, false);
                         return sendResponse({ success: false });
                     }
                     showToast("🌉 AI-Bridge: Context Extracted (" + parsedMessages.length + " Msgs)!");

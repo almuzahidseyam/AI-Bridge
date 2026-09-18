@@ -53,3 +53,9 @@ With v4.0, you can go to **Settings** and set a **Context Limit** (e.g., Keep on
 * **Safe Markdown Injection**: Workspace code is now injected using Markdown syntax rather than XML, preventing prompt-parsing vulnerabilities if your code contains XML tags.
 * **JSZip Progress Tracking**: Added live progress updates so the extension UI doesn't appear frozen on massive ZIP files.
 * **Payload Warnings**: Warns users before injecting massively heavy payloads (200KB+) that could momentarily freeze the browser's render thread.
+
+## 🛡️ v7.0 The Security Update
+* **API Key Leak Firewall**: The ZIP packager now automatically scans and explicitly blocks hidden files (like .env, .git, .DS_Store) from being extracted, ensuring your API keys and credentials are never accidentally leaked to ChatGPT or Claude servers.
+* **Unlimited Storage Quota**: Upgraded manifest.json permissions to bypass the 5MB browser storage limit, allowing extraction of massive conversational histories without crashing.
+* **Native DOM Typing Simulation**: Switched from React-specific hacks to document.execCommand, natively mimicking human keystrokes to ensure 100% compatibility across all modern web frameworks (React, Vue, Angular).
+* **Liveness Detection**: The extension now detects if the target page has gone to sleep or disconnected, prompting the user to refresh instead of failing silently.
