@@ -1,13 +1,15 @@
 ﻿{
   "manifest_version": 3,
   "name": "AI-Bridge: Context Transfer",
-  "version": "4.0",
-  "description": "Seamlessly transfer chat context between ChatGPT, Claude, and Gemini with Auto-Unzip, XML Codebase Injection, and Token Optimization.",
+  "version": "5.0",
+  "description": "Seamlessly transfer chat context between ChatGPT, Claude, Gemini, Perplexity, and HuggingFace with Custom Prompts Library.",
   "permissions": ["activeTab", "scripting", "storage", "downloads"],
   "host_permissions": [
     "*://chatgpt.com/*",
     "*://claude.ai/*",
-    "*://gemini.google.com/*"
+    "*://gemini.google.com/*",
+    "*://www.perplexity.ai/*",
+    "*://huggingface.co/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -19,7 +21,13 @@
   "options_page": "options.html",
   "content_scripts": [
     {
-      "matches": ["*://chatgpt.com/*", "*://claude.ai/*", "*://gemini.google.com/*"],
+      "matches": [
+        "*://chatgpt.com/*", 
+        "*://claude.ai/*", 
+        "*://gemini.google.com/*",
+        "*://www.perplexity.ai/*",
+        "*://huggingface.co/chat/*"
+      ],
       "js": ["content.js"]
     }
   ]

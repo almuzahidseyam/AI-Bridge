@@ -43,3 +43,7 @@ No more manual file uploads!
 ## ⚡ v4.0 New Feature: Token Optimizer (Context Minifier)
 Extracting massive 50,000-word chats crashes AI context limits. 
 With v4.0, you can go to **Settings** and set a **Context Limit** (e.g., Keep only the last 10 messages). The extension will automatically trim older messages, preventing AI confusion and saving your token limits!
+
+## 🌍 v5.0 Update: Multi-AI Expansion & Prompt Library
+* **Custom Prompts Library**: Go to settings and choose predefined personas like "Web Dev Mode", "Data Science Mode", or "Writer Mode".
+* **Multi-AI Support**: Now officially supports extraction and injection across **ChatGPT, Claude, Google Gemini, Perplexity AI, and HuggingFace Chat**.

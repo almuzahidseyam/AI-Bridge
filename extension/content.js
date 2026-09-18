@@ -1,4 +1,4 @@
-﻿// AI-Bridge Advanced Content Script (v4.0 with Token Optimizer)
+﻿// AI-Bridge Advanced Content Script (v5.0 with Multi-AI Support)
 function showToast(message, isSuccess = true) {
     let toast = document.createElement('div');
     toast.innerText = message;
@@ -29,23 +29,45 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 
                 if (url.includes('chatgpt.com')) {
                     let elements = Array.from(document.querySelectorAll('[data-message-author-role]'));
-                    if (limit > 0 && elements.length > limit) { elements = elements.slice(-limit); }
-                    
+                    if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
                     elements.forEach(msg => {
                         let role = msg.getAttribute('data-message-author-role');
                         let text = '';
                         msg.childNodes.forEach(node => {
-                            if (node.nodeName === 'PRE') { text += '\n`\n' + node.innerText + '\n`\n'; } 
-                            else { text += node.innerText + '\n'; }
+                            if (node.nodeName === 'PRE') text += '\n`\n' + node.innerText + '\n`\n';
+                            else text += node.innerText + '\n';
                         });
                         parsedMessages.push(\n\n---  + role.toUpperCase() +  ---\n + text.trim());
                     });
                 } else if (url.includes('claude.ai')) {
                     let elements = Array.from(document.querySelectorAll('.font-user-message, .font-claude-message'));
-                    if (limit > 0 && elements.length > limit) { elements = elements.slice(-limit); }
-                    
+                    if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
                     elements.forEach(msg => {
                         let role = msg.className.includes('user') ? 'USER' : 'ASSISTANT';
+                        parsedMessages.push(\n\n---  + role +  ---\n + msg.innerText.trim());
+                    });
+                } else if (url.includes('gemini.google.com')) {
+                    // Gemini Support
+                    let elements = Array.from(document.querySelectorAll('user-query, model-response'));
+                    if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
+                    elements.forEach(msg => {
+                        let role = msg.tagName.toLowerCase() === 'user-query' ? 'USER' : 'ASSISTANT';
+                        parsedMessages.push(\n\n---  + role +  ---\n + msg.innerText.trim());
+                    });
+                } else if (url.includes('perplexity.ai')) {
+                    // Perplexity Support
+                    let elements = Array.from(document.querySelectorAll('.prose'));
+                    if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
+                    elements.forEach((msg, idx) => {
+                        let role = (idx % 2 === 0) ? 'USER' : 'ASSISTANT';
+                        parsedMessages.push(\n\n---  + role +  ---\n + msg.innerText.trim());
+                    });
+                } else if (url.includes('huggingface.co')) {
+                    // HuggingFace Chat Support
+                    let elements = Array.from(document.querySelectorAll('.prose'));
+                    if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
+                    elements.forEach((msg, idx) => {
+                        let role = (idx % 2 === 0) ? 'USER' : 'ASSISTANT';
                         parsedMessages.push(\n\n---  + role +  ---\n + msg.innerText.trim());
                     });
                 } else {
@@ -57,9 +79,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     return sendResponse({ success: false });
                 }
                 
-                if (limit > 0) {
-                    chatContext = [⚡ SYSTEM NOTE: Chat context minified to the last  + limit +  messages to save tokens]\n;
-                }
+                if (limit > 0) chatContext = [⚡ SYSTEM NOTE: Chat context minified to the last  + limit +  messages]\n;
                 chatContext += parsedMessages.join('');
 
                 chrome.runtime.sendMessage({ action: 'saveContext', data: chatContext }, () => {
@@ -73,24 +93,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
         return true;
     } 
-    else if (request.action === 'inject') {
+    
+    else if (request.action === 'inject' || request.action === 'inject_payload') {
         chrome.storage.local.get(['aiBridgeContext', 'customPrompt'], (result) => {
-            if (!result.aiBridgeContext) {
-                showToast("AI-Bridge: No context found in memory!", false);
-                return sendResponse({ success: false });
-            }
-
+            let context = result.aiBridgeContext || "No history.";
             let defaultPrompt = 🔄 [SYSTEM AUTO-SYNC: AI-BRIDGE]\nYou are receiving a transferred context from another AI. Read the history below and seamlessly resume the project.\nReply ONLY with: "**[AI-Bridge Sync Complete]** 🟢 Ready for the next command!"\n\n--- PREVIOUS CHAT HISTORY ---\n{CONTEXT};
             
             let megaPromptTemplate = result.customPrompt || defaultPrompt;
-            let megaPrompt = megaPromptTemplate.replace('{CONTEXT}', result.aiBridgeContext);
+            let megaPrompt = request.payload || megaPromptTemplate.replace('{CONTEXT}', context);
 
             navigator.clipboard.writeText(megaPrompt).then(() => {
-                let inputBox = document.querySelector('textarea, [contenteditable="true"], #prompt-textarea');
+                let inputBox = document.querySelector('textarea, [contenteditable="true"], #prompt-textarea, rich-textarea, .ql-editor');
                 if (inputBox) {
                     if (inputBox.tagName === 'TEXTAREA') { inputBox.value = megaPrompt; } 
                     else { inputBox.innerText = megaPrompt; }
                     inputBox.dispatchEvent(new Event('input', { bubbles: true }));
+                    inputBox.dispatchEvent(new Event('change', { bubbles: true }));
                     
                     let reactProps = Object.keys(inputBox).find(k => k.startsWith('__reactProps$'));
                     if (reactProps && inputBox[reactProps].onChange) {
@@ -103,28 +121,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     sendResponse({ success: true });
                 }
             });
-        });
-        return true;
-    }
-    else if (request.action === 'inject_payload') {
-        let megaPrompt = request.payload;
-        navigator.clipboard.writeText(megaPrompt).then(() => {
-            let inputBox = document.querySelector('textarea, [contenteditable="true"], #prompt-textarea');
-            if (inputBox) {
-                if (inputBox.tagName === 'TEXTAREA') { inputBox.value = megaPrompt; } 
-                else { inputBox.innerText = megaPrompt; }
-                inputBox.dispatchEvent(new Event('input', { bubbles: true }));
-                
-                let reactProps = Object.keys(inputBox).find(k => k.startsWith('__reactProps$'));
-                if (reactProps && inputBox[reactProps].onChange) {
-                    inputBox[reactProps].onChange({target: inputBox});
-                }
-                showToast("🪄 AI-Bridge: Codebase & Context Auto-Injected!");
-                sendResponse({ success: true });
-            } else {
-                showToast("🪄 AI-Bridge: Copied entire codebase to Clipboard! (Ctrl+V)", true);
-                sendResponse({ success: true });
-            }
         });
         return true;
     }
