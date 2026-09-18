@@ -47,3 +47,9 @@ With v4.0, you can go to **Settings** and set a **Context Limit** (e.g., Keep on
 ## 🌍 v5.0 Update: Multi-AI Expansion & Prompt Library
 * **Custom Prompts Library**: Go to settings and choose predefined personas like "Web Dev Mode", "Data Science Mode", or "Writer Mode".
 * **Multi-AI Support**: Now officially supports extraction and injection across **ChatGPT, Claude, Google Gemini, Perplexity AI, and HuggingFace Chat**.
+
+## 🏗️ v6.0 The Architecture Update
+* **Smart Heuristics Engine**: No longer relies purely on hardcoded CSS classes that break when ChatGPT/Claude update their UI. Falls back to a heuristic DOM parser.
+* **Safe Markdown Injection**: Workspace code is now injected using Markdown syntax rather than XML, preventing prompt-parsing vulnerabilities if your code contains XML tags.
+* **JSZip Progress Tracking**: Added live progress updates so the extension UI doesn't appear frozen on massive ZIP files.
+* **Payload Warnings**: Warns users before injecting massively heavy payloads (200KB+) that could momentarily freeze the browser's render thread.

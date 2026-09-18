@@ -1,4 +1,4 @@
-﻿// AI-Bridge Advanced Content Script (v5.1 Bug Fixes)
+﻿// AI-Bridge Advanced Content Script (v6.0 Architecture Update)
 function showToast(message, isSuccess = true) {
     let toast = document.createElement('div');
     toast.innerText = message;
@@ -17,7 +17,6 @@ function showToast(message, isSuccess = true) {
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
-// BUG FIX: Inject a script to the main world to trigger React events properly
 function triggerReactEvent(payloadText) {
     let script = document.createElement('script');
     script.textContent = 
@@ -30,7 +29,6 @@ function triggerReactEvent(payloadText) {
                 inputBox.dispatchEvent(new Event('input', { bubbles: true }));
                 inputBox.dispatchEvent(new Event('change', { bubbles: true }));
                 
-                // Hack for React
                 let reactProps = Object.keys(inputBox).find(k => k.startsWith('__reactProps$'));
                 if (reactProps && inputBox[reactProps].onChange) {
                     inputBox[reactProps].onChange({target: inputBox});
@@ -43,71 +41,82 @@ function triggerReactEvent(payloadText) {
 }
 
 function handleInjection(megaPrompt, sendResponse) {
-    // Write to clipboard as a fallback
+    // Check Payload Size (v6.0 Warning)
+    if (megaPrompt.length > 200000) {
+        showToast("⚠️ Warning: Payload is massive. Browser might lag slightly.", false);
+    }
+    
     navigator.clipboard.writeText(megaPrompt).then(() => {
         triggerReactEvent(megaPrompt);
         showToast("🌉 AI-Bridge: Context Injected! Press Send.");
         sendResponse({ success: true });
     }).catch(err => {
-        console.warn("AI-Bridge Clipboard warning (needs page focus):", err);
-        // Even if clipboard fails, try to inject
         triggerReactEvent(megaPrompt);
         showToast("🌉 AI-Bridge: Context Injected! (Clipboard blocked)");
         sendResponse({ success: true });
     });
 }
 
+// v6.0 Smart Heuristic Parser
+function extractChatHeuristically(limit) {
+    let parsedMessages = [];
+    const url = window.location.hostname;
+    
+    // Attempt standard selectors first
+    let elements = [];
+    if (url.includes('chatgpt.com')) elements = Array.from(document.querySelectorAll('[data-message-author-role]'));
+    else if (url.includes('claude.ai')) elements = Array.from(document.querySelectorAll('.font-user-message, .font-claude-message'));
+    else if (url.includes('gemini.google.com')) elements = Array.from(document.querySelectorAll('user-query, model-response'));
+    else elements = Array.from(document.querySelectorAll('.prose'));
+
+    // If standard selectors fail (due to UI update), use Heuristics!
+    if (elements.length === 0) {
+        console.warn("AI-Bridge: Standard selectors failed. Using smart heuristics.");
+        // Find alternating message-like blocks (e.g. paragraphs inside wide containers)
+        let paragraphs = Array.from(document.querySelectorAll('p, .message, [role="row"]'));
+        elements = paragraphs.filter(p => p.innerText.length > 10); // filter out noise
+    }
+
+    if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
+    
+    elements.forEach((msg, idx) => {
+        let role = (idx % 2 === 0) ? 'USER' : 'ASSISTANT';
+        
+        // ChatGPT precise role override
+        if (msg.hasAttribute('data-message-author-role')) {
+            role = msg.getAttribute('data-message-author-role').toUpperCase();
+        } else if (msg.className && msg.className.includes('user')) {
+            role = 'USER';
+        } else if (msg.tagName && msg.tagName.toLowerCase() === 'user-query') {
+            role = 'USER';
+        }
+
+        let text = '';
+        msg.childNodes.forEach(node => {
+            if (node.nodeName === 'PRE') text += '\n`\n' + node.innerText + '\n`\n';
+            else text += node.innerText + '\n';
+        });
+        
+        parsedMessages.push(\n\n---  + role +  ---\n + (text.trim() || msg.innerText.trim()));
+    });
+    
+    return parsedMessages;
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'extract') {
         chrome.storage.local.get(['contextLimit'], (result) => {
             let limit = result.contextLimit !== undefined ? result.contextLimit : 10;
-            let chatContext = '';
-            const url = window.location.hostname;
             
             try {
-                let parsedMessages = [];
-                if (url.includes('chatgpt.com')) {
-                    let elements = Array.from(document.querySelectorAll('[data-message-author-role]'));
-                    if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
-                    elements.forEach(msg => {
-                        let role = msg.getAttribute('data-message-author-role');
-                        let text = '';
-                        msg.childNodes.forEach(node => {
-                            if (node.nodeName === 'PRE') text += '\n`\n' + node.innerText + '\n`\n';
-                            else text += node.innerText + '\n';
-                        });
-                        parsedMessages.push(\n\n---  + role.toUpperCase() +  ---\n + text.trim());
-                    });
-                } else if (url.includes('claude.ai')) {
-                    let elements = Array.from(document.querySelectorAll('.font-user-message, .font-claude-message'));
-                    if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
-                    elements.forEach(msg => {
-                        let role = msg.className.includes('user') ? 'USER' : 'ASSISTANT';
-                        parsedMessages.push(\n\n---  + role +  ---\n + msg.innerText.trim());
-                    });
-                } else if (url.includes('gemini.google.com')) {
-                    let elements = Array.from(document.querySelectorAll('user-query, model-response'));
-                    if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
-                    elements.forEach(msg => {
-                        let role = msg.tagName.toLowerCase() === 'user-query' ? 'USER' : 'ASSISTANT';
-                        parsedMessages.push(\n\n---  + role +  ---\n + msg.innerText.trim());
-                    });
-                } else if (url.includes('perplexity.ai') || url.includes('huggingface.co')) {
-                    let elements = Array.from(document.querySelectorAll('.prose'));
-                    if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
-                    elements.forEach((msg, idx) => {
-                        let role = (idx % 2 === 0) ? 'USER' : 'ASSISTANT';
-                        parsedMessages.push(\n\n---  + role +  ---\n + msg.innerText.trim());
-                    });
-                } else {
-                    parsedMessages.push(document.body.innerText.substring(0, 8000));
-                }
+                let parsedMessages = extractChatHeuristically(limit);
 
                 if (parsedMessages.length === 0) {
                     showToast("AI-Bridge: No chat found to extract!", false);
                     return sendResponse({ success: false });
                 }
                 
+                let chatContext = "";
                 if (limit > 0) chatContext = [⚡ SYSTEM NOTE: Chat context minified to the last  + limit +  messages]\n;
                 chatContext += parsedMessages.join('');
 

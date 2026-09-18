@@ -42,15 +42,14 @@ document.getElementById('settingsBtn').addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
 });
 
-// Feature 3: Package ZIP
+// Feature 3: Package ZIP (v6.0 with Progress Bar)
 document.getElementById('folderPicker').addEventListener('change', async (event) => {
     const files = event.target.files;
     if (files.length === 0) return;
     const status = document.getElementById('status');
-    status.innerText = "📦 Packaging ZIP...";
+    status.innerText = "📦 Packaging ZIP... 0%";
     status.style.color = "#8957e5";
     
-    // BUG FIX: Ignore massive directories to prevent memory crash
     const ignoreDirs = ['node_modules', '.git', '.next', 'dist', 'build', 'venv', '__pycache__', '.env'];
     
     try {
@@ -61,10 +60,16 @@ document.getElementById('folderPicker').addEventListener('change', async (event)
             if (ignoreDirs.some(dir => path.includes('/' + dir + '/'))) continue;
             workspace.file(path, files[i]);
         }
-        chrome.storage.local.get(['aiBridgeContext', 'customPrompt'], async (result) => {
+        
+        chrome.storage.local.get(['aiBridgeContext'], async (result) => {
             let context = result.aiBridgeContext || "No chat history extracted.";
             zip.file("context/chat_history.txt", context);
-            let content = await zip.generateAsync({type: "blob"});
+            
+            // v6.0 Progress Bar Implementation
+            let content = await zip.generateAsync({type: "blob"}, function updateCallback(metadata) {
+                status.innerText = "📦 Packaging ZIP... " + metadata.percent.toFixed(0) + "%";
+            });
+            
             const link = document.createElement("a");
             link.href = URL.createObjectURL(content);
             link.download = "AI-Bridge-Workspace.zip";
@@ -78,27 +83,33 @@ document.getElementById('folderPicker').addEventListener('change', async (event)
     }
 });
 
-// Feature 4: Auto-Unzip & Inject
+// Feature 4: Auto-Unzip & Inject (v6.0 XML-to-Markdown fix)
 document.getElementById('zipPicker').addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) return;
     const status = document.getElementById('status');
-    status.innerText = "🪄 Unzipping and parsing...";
+    status.innerText = "🪄 Unzipping... 0%";
     status.style.color = "#bf3989";
 
     try {
         let zip = await JSZip.loadAsync(file);
-        let workspaceXml = "<workspace>\n";
+        let workspaceMarkdown = "\n";
         let historyContent = "";
         
         const textExtensions = ['js','html','css','py','md','txt','json','ts','jsx','tsx','c','cpp','java','php','rs','go'];
         const ignoreDirs = ['node_modules', '.git', '.next', 'dist', 'build', 'venv', '__pycache__'];
 
+        let fileCount = Object.keys(zip.files).length;
+        let processed = 0;
+
         for (let relativePath in zip.files) {
             let zipEntry = zip.files[relativePath];
+            processed++;
+            if (processed % 10 === 0) {
+                status.innerText = "🪄 Parsing files... " + Math.round((processed / fileCount) * 100) + "%";
+            }
+
             if (zipEntry.dir) continue;
-            
-            // BUG FIX: Skip huge directories
             if (ignoreDirs.some(dir => relativePath.includes(dir + '/'))) continue;
 
             if (relativePath.includes('chat_history.txt')) {
@@ -108,14 +119,13 @@ document.getElementById('zipPicker').addEventListener('change', async (event) =>
 
             let ext = relativePath.split('.').pop().toLowerCase();
             if (textExtensions.includes(ext) || !relativePath.includes('.')) {
-                // BUG FIX: Skip files larger than 1MB to prevent V8 memory crashes
                 if (zipEntry._data && zipEntry._data.uncompressedSize > 1048576) continue;
                 
                 let fileData = await zipEntry.async("string");
-                workspaceXml += <file path=" + relativePath + ">\n + fileData + \n</file>\n\n;
+                // v6.0 Fix: Markdown instead of pseudo-XML to prevent AI parsing breaks
+                workspaceMarkdown += \n### FILE:  + relativePath + \n\\\${ext}\n + fileData + \n\\\\n;
             }
         }
-        workspaceXml += "</workspace>";
 
         chrome.storage.local.get(['customPrompt'], async (result) => {
             let defaultPrompt = 🔄 [SYSTEM AUTO-SYNC: AI-BRIDGE]\nYou are receiving a transferred context from another AI. Read the history and workspace codebase below to seamlessly resume the project.\nReply ONLY with: "**[AI-Bridge Sync Complete]** 🟢 Ready for the next command!"\n\n--- PREVIOUS CHAT HISTORY ---\n{CONTEXT}\n\n--- CURRENT WORKSPACE CODEBASE ---\n{WORKSPACE};
@@ -125,7 +135,7 @@ document.getElementById('zipPicker').addEventListener('change', async (event) =>
                 template += "\n\n--- CURRENT WORKSPACE CODEBASE ---\n{WORKSPACE}";
             }
             
-            let finalPayload = template.replace('{CONTEXT}', historyContent || 'No history.').replace('{WORKSPACE}', workspaceXml);
+            let finalPayload = template.replace('{CONTEXT}', historyContent || 'No history.').replace('{WORKSPACE}', workspaceMarkdown);
 
             let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             chrome.tabs.sendMessage(tab.id, { action: "inject_payload", payload: finalPayload }, (response) => {
