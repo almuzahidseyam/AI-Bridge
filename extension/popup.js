@@ -3,6 +3,11 @@
     status.innerText = "Extracting chat context...";
     let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     chrome.tabs.sendMessage(tab.id, { action: "extract" }, (response) => {
+        if (chrome.runtime.lastError) {
+            status.innerText = "❌ Reload page & try again.";
+            status.style.color = "#f85149";
+            return;
+        }
         if (response && response.success) {
             status.innerText = "✅ Context saved!";
             status.style.color = "#3fb950";
@@ -18,6 +23,11 @@ document.getElementById('injectBtn').addEventListener('click', async () => {
     status.innerText = "Injecting context...";
     let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     chrome.tabs.sendMessage(tab.id, { action: "inject" }, (response) => {
+        if (chrome.runtime.lastError) {
+            status.innerText = "❌ Reload page & try again.";
+            status.style.color = "#f85149";
+            return;
+        }
         if (response && response.success) {
             status.innerText = "🚀 Injection complete!";
             status.style.color = "#3fb950";
@@ -40,11 +50,16 @@ document.getElementById('folderPicker').addEventListener('change', async (event)
     status.innerText = "📦 Packaging ZIP...";
     status.style.color = "#8957e5";
     
+    // BUG FIX: Ignore massive directories to prevent memory crash
+    const ignoreDirs = ['node_modules', '.git', '.next', 'dist', 'build', 'venv', '__pycache__', '.env'];
+    
     try {
         let zip = new JSZip();
         let workspace = zip.folder("workspace");
         for (let i = 0; i < files.length; i++) {
-            workspace.file(files[i].webkitRelativePath, files[i]);
+            let path = files[i].webkitRelativePath;
+            if (ignoreDirs.some(dir => path.includes('/' + dir + '/'))) continue;
+            workspace.file(path, files[i]);
         }
         chrome.storage.local.get(['aiBridgeContext', 'customPrompt'], async (result) => {
             let context = result.aiBridgeContext || "No chat history extracted.";
@@ -63,7 +78,7 @@ document.getElementById('folderPicker').addEventListener('change', async (event)
     }
 });
 
-// Feature 4 (v3.0): Auto-Unzip & Inject
+// Feature 4: Auto-Unzip & Inject
 document.getElementById('zipPicker').addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -77,21 +92,26 @@ document.getElementById('zipPicker').addEventListener('change', async (event) =>
         let historyContent = "";
         
         const textExtensions = ['js','html','css','py','md','txt','json','ts','jsx','tsx','c','cpp','java','php','rs','go'];
+        const ignoreDirs = ['node_modules', '.git', '.next', 'dist', 'build', 'venv', '__pycache__'];
 
         for (let relativePath in zip.files) {
             let zipEntry = zip.files[relativePath];
             if (zipEntry.dir) continue;
+            
+            // BUG FIX: Skip huge directories
+            if (ignoreDirs.some(dir => relativePath.includes(dir + '/'))) continue;
 
             if (relativePath.includes('chat_history.txt')) {
                 historyContent = await zipEntry.async("string");
                 continue;
             }
 
-            // Simple binary filter based on extension
             let ext = relativePath.split('.').pop().toLowerCase();
             if (textExtensions.includes(ext) || !relativePath.includes('.')) {
+                // BUG FIX: Skip files larger than 1MB to prevent V8 memory crashes
+                if (zipEntry._data && zipEntry._data.uncompressedSize > 1048576) continue;
+                
                 let fileData = await zipEntry.async("string");
-                // Remove root folder name if needed, but keeping it is fine
                 workspaceXml += <file path=" + relativePath + ">\n + fileData + \n</file>\n\n;
             }
         }
@@ -109,6 +129,11 @@ document.getElementById('zipPicker').addEventListener('change', async (event) =>
 
             let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             chrome.tabs.sendMessage(tab.id, { action: "inject_payload", payload: finalPayload }, (response) => {
+                if (chrome.runtime.lastError) {
+                    status.innerText = "❌ Reload page & try again.";
+                    status.style.color = "#f85149";
+                    return;
+                }
                 if (response && response.success) {
                     status.innerText = "🪄 Magic Injection Complete!";
                     status.style.color = "#3fb950";

@@ -1,4 +1,4 @@
-﻿// AI-Bridge Advanced Content Script (v5.0 with Multi-AI Support)
+﻿// AI-Bridge Advanced Content Script (v5.1 Bug Fixes)
 function showToast(message, isSuccess = true) {
     let toast = document.createElement('div');
     toast.innerText = message;
@@ -17,6 +17,46 @@ function showToast(message, isSuccess = true) {
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
+// BUG FIX: Inject a script to the main world to trigger React events properly
+function triggerReactEvent(payloadText) {
+    let script = document.createElement('script');
+    script.textContent = 
+        (function() {
+            let inputBox = document.querySelector('textarea, [contenteditable="true"], #prompt-textarea, rich-textarea, .ql-editor');
+            if (inputBox) {
+                if (inputBox.tagName === 'TEXTAREA') { inputBox.value =  + JSON.stringify(payloadText) + ; } 
+                else { inputBox.innerText =  + JSON.stringify(payloadText) + ; }
+                
+                inputBox.dispatchEvent(new Event('input', { bubbles: true }));
+                inputBox.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                // Hack for React
+                let reactProps = Object.keys(inputBox).find(k => k.startsWith('__reactProps$'));
+                if (reactProps && inputBox[reactProps].onChange) {
+                    inputBox[reactProps].onChange({target: inputBox});
+                }
+            }
+        })();
+    ;
+    document.documentElement.appendChild(script);
+    script.remove();
+}
+
+function handleInjection(megaPrompt, sendResponse) {
+    // Write to clipboard as a fallback
+    navigator.clipboard.writeText(megaPrompt).then(() => {
+        triggerReactEvent(megaPrompt);
+        showToast("🌉 AI-Bridge: Context Injected! Press Send.");
+        sendResponse({ success: true });
+    }).catch(err => {
+        console.warn("AI-Bridge Clipboard warning (needs page focus):", err);
+        // Even if clipboard fails, try to inject
+        triggerReactEvent(megaPrompt);
+        showToast("🌉 AI-Bridge: Context Injected! (Clipboard blocked)");
+        sendResponse({ success: true });
+    });
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'extract') {
         chrome.storage.local.get(['contextLimit'], (result) => {
@@ -26,7 +66,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             
             try {
                 let parsedMessages = [];
-                
                 if (url.includes('chatgpt.com')) {
                     let elements = Array.from(document.querySelectorAll('[data-message-author-role]'));
                     if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
@@ -47,23 +86,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         parsedMessages.push(\n\n---  + role +  ---\n + msg.innerText.trim());
                     });
                 } else if (url.includes('gemini.google.com')) {
-                    // Gemini Support
                     let elements = Array.from(document.querySelectorAll('user-query, model-response'));
                     if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
                     elements.forEach(msg => {
                         let role = msg.tagName.toLowerCase() === 'user-query' ? 'USER' : 'ASSISTANT';
                         parsedMessages.push(\n\n---  + role +  ---\n + msg.innerText.trim());
                     });
-                } else if (url.includes('perplexity.ai')) {
-                    // Perplexity Support
-                    let elements = Array.from(document.querySelectorAll('.prose'));
-                    if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
-                    elements.forEach((msg, idx) => {
-                        let role = (idx % 2 === 0) ? 'USER' : 'ASSISTANT';
-                        parsedMessages.push(\n\n---  + role +  ---\n + msg.innerText.trim());
-                    });
-                } else if (url.includes('huggingface.co')) {
-                    // HuggingFace Chat Support
+                } else if (url.includes('perplexity.ai') || url.includes('huggingface.co')) {
                     let elements = Array.from(document.querySelectorAll('.prose'));
                     if (limit > 0 && elements.length > limit) elements = elements.slice(-limit);
                     elements.forEach((msg, idx) => {
@@ -82,7 +111,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 if (limit > 0) chatContext = [⚡ SYSTEM NOTE: Chat context minified to the last  + limit +  messages]\n;
                 chatContext += parsedMessages.join('');
 
-                chrome.runtime.sendMessage({ action: 'saveContext', data: chatContext }, () => {
+                chrome.storage.local.set({ aiBridgeContext: chatContext }, () => {
+                    if(chrome.runtime.lastError) {
+                        showToast("AI-Bridge Storage Error: Quota exceeded", false);
+                        return sendResponse({ success: false });
+                    }
                     showToast("🌉 AI-Bridge: Context Extracted (" + parsedMessages.length + " Msgs)!");
                     sendResponse({ success: true });
                 });
@@ -93,7 +126,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
         return true;
     } 
-    
     else if (request.action === 'inject' || request.action === 'inject_payload') {
         chrome.storage.local.get(['aiBridgeContext', 'customPrompt'], (result) => {
             let context = result.aiBridgeContext || "No history.";
@@ -102,25 +134,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             let megaPromptTemplate = result.customPrompt || defaultPrompt;
             let megaPrompt = request.payload || megaPromptTemplate.replace('{CONTEXT}', context);
 
-            navigator.clipboard.writeText(megaPrompt).then(() => {
-                let inputBox = document.querySelector('textarea, [contenteditable="true"], #prompt-textarea, rich-textarea, .ql-editor');
-                if (inputBox) {
-                    if (inputBox.tagName === 'TEXTAREA') { inputBox.value = megaPrompt; } 
-                    else { inputBox.innerText = megaPrompt; }
-                    inputBox.dispatchEvent(new Event('input', { bubbles: true }));
-                    inputBox.dispatchEvent(new Event('change', { bubbles: true }));
-                    
-                    let reactProps = Object.keys(inputBox).find(k => k.startsWith('__reactProps$'));
-                    if (reactProps && inputBox[reactProps].onChange) {
-                        inputBox[reactProps].onChange({target: inputBox});
-                    }
-                    showToast("🌉 AI-Bridge: Context Injected! Press Send.");
-                    sendResponse({ success: true });
-                } else {
-                    showToast("🌉 AI-Bridge: Copied to Clipboard! (Hit Ctrl+V)", true);
-                    sendResponse({ success: true });
-                }
-            });
+            handleInjection(megaPrompt, sendResponse);
         });
         return true;
     }
