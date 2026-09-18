@@ -92,3 +92,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
 });
+// Append to content.js
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'inject_payload') {
+        let megaPrompt = request.payload;
+        navigator.clipboard.writeText(megaPrompt).then(() => {
+            let inputBox = document.querySelector('textarea, [contenteditable="true"], #prompt-textarea');
+            if (inputBox) {
+                if (inputBox.tagName === 'TEXTAREA') { inputBox.value = megaPrompt; } 
+                else { inputBox.innerText = megaPrompt; }
+                inputBox.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                let reactProps = Object.keys(inputBox).find(k => k.startsWith('__reactProps$'));
+                if (reactProps && inputBox[reactProps].onChange) {
+                    inputBox[reactProps].onChange({target: inputBox});
+                }
+                showToast("🪄 AI-Bridge: Codebase & Context Auto-Injected!");
+                sendResponse({ success: true });
+            } else {
+                showToast("🪄 AI-Bridge: Copied entire codebase to Clipboard! (Ctrl+V)", true);
+                sendResponse({ success: true });
+            }
+        });
+        return true;
+    }
+});

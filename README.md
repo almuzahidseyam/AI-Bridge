@@ -33,3 +33,9 @@ Have you ever started a massive project in ChatGPT, only to realize Claude handl
 ## 📝 License
 This project is proudly open-source and licensed under the **MIT License**. Copyright (c) 2026 Muhammad Al-Muzahid.
 
+
+## 🪄 v3.0 Magic Feature: Auto-Unzip & Inject
+No more manual file uploads! 
+1. Click **4. Auto-Unzip & Inject ZIP directly!** in the extension.
+2. Select your AI-Bridge-Workspace.zip.
+3. The extension instantly parses all code files, formats them into a structured XML codebase, and injects EVERYTHING (Code + History) directly into the AI's chatbox.

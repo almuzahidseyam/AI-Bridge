@@ -3,46 +3,60 @@
 <head>
     <title>AI-Bridge</title>
     <style>
-        body { width: 340px; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; margin: 0; }
-        .container { display: flex; flex-direction: column; gap: 12px; }
-        .header { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 5px; }
+        body { width: 360px; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; margin: 0; }
+        .container { display: flex; flex-direction: column; gap: 10px; }
+        .header { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 2px; }
         h2 { margin: 0; font-size: 20px; color: #58a6ff; letter-spacing: 0.5px; }
         .badge { background: #d29922; color: white; padding: 2px 6px; border-radius: 12px; font-size: 10px; font-weight: bold; }
-        p { font-size: 13px; text-align: center; color: #8b949e; margin-top: -5px; margin-bottom: 10px; }
-        button, label.upload-btn { padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease; text-align: center; box-sizing: border-box; width: 100%; }
+        p { font-size: 12px; text-align: center; color: #8b949e; margin-top: -5px; margin-bottom: 10px; }
+        
+        button, label.upload-btn { padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease; text-align: center; box-sizing: border-box; width: 100%; margin-bottom: 2px; }
+        
+        /* Action buttons */
         #exportBtn { background: #238636; color: white; }
         #exportBtn:hover { background: #2ea043; }
+        
         #injectBtn { background: #21262d; color: #c9d1d9; border: 1px solid rgba(240, 246, 252, 0.1); }
         #injectBtn:hover { background: #30363d; color: white; }
         
         .divider { border-top: 1px solid #30363d; margin: 5px 0; }
         
-        .upload-btn { background: #8957e5; color: white; }
-        .upload-btn:hover { background: #9e6cfc; }
+        /* File actions */
+        .pack-btn { background: #8957e5; color: white; }
+        .pack-btn:hover { background: #9e6cfc; }
+        
+        .magic-btn { background: #bf3989; color: white; }
+        .magic-btn:hover { background: #d8459e; }
+        
         input[type="file"] { display: none; }
         
-        #settingsBtn { background: transparent; color: #8b949e; border: 1px solid #30363d; padding: 6px; margin-top: 5px;}
+        #settingsBtn { background: transparent; color: #8b949e; border: 1px solid #30363d; padding: 8px;}
         #settingsBtn:hover { background: #21262d; color: white; }
         
-        #status { font-size: 12px; text-align: center; margin-top: 5px; color: #3fb950; min-height: 15px;}
+        #status { font-size: 12px; text-align: center; margin-top: 5px; color: #3fb950; min-height: 15px; font-weight: 500;}
     </style>
     <script src="jszip.min.js"></script>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h2>AI-Bridge</h2><span class="badge">v2.0</span>
+            <h2>AI-Bridge</h2><span class="badge">v3.0</span>
         </div>
         <p>Seamless Context Transfer</p>
         
         <button id="exportBtn">📤 1. Extract Chat Context</button>
-        <button id="injectBtn">📥 2. Inject into New AI</button>
+        <button id="injectBtn">📥 2. Inject Context (History Only)</button>
         
         <div class="divider"></div>
         
-        <label class="upload-btn">
+        <label class="upload-btn pack-btn">
             <input type="file" id="folderPicker" webkitdirectory directory multiple>
-            📦 3. Package Workspace (ZIP)
+            📦 3. Save Context + Code (Download ZIP)
+        </label>
+        
+        <label class="upload-btn magic-btn">
+            <input type="file" id="zipPicker" accept=".zip">
+            🪄 4. Auto-Unzip & Inject ZIP directly!
         </label>
         
         <button id="settingsBtn">⚙️ Customize Mega-Prompt</button>
