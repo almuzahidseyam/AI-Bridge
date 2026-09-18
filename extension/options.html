@@ -1,0 +1,32 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>AI-Bridge Settings</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; padding: 20px; max-width: 600px; margin: auto; }
+        h2 { color: #58a6ff; }
+        textarea { width: 100%; height: 250px; background: #161b22; color: #c9d1d9; border: 1px solid #30363d; padding: 10px; border-radius: 6px; font-family: monospace; font-size: 13px; resize: vertical; }
+        button { background: #238636; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px; }
+        button:hover { background: #2ea043; }
+        #status { display: inline-block; margin-left: 10px; color: #3fb950; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h2>⚙️ AI-Bridge Mega-Prompt Settings</h2>
+    <p>Customize the prompt that is injected into the new AI. Use <code>{CONTEXT}</code> exactly where you want the chat history to be placed.</p>
+    
+    <textarea id="promptBox">
+🔄 [SYSTEM AUTO-SYNC: AI-BRIDGE]
+You are receiving a transferred context from another AI. Read the history below and seamlessly resume the project.
+Reply ONLY with: "**[AI-Bridge Sync Complete]** 🟢 Ready for the next command!"
+
+--- PREVIOUS CHAT HISTORY ---
+{CONTEXT}
+    </textarea>
+    
+    <button id="saveBtn">Save Prompt</button>
+    <span id="status"></span>
+    
+    <script src="options.js"></script>
+</body>
+</html>
