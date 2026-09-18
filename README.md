@@ -39,3 +39,7 @@ No more manual file uploads!
 1. Click **4. Auto-Unzip & Inject ZIP directly!** in the extension.
 2. Select your AI-Bridge-Workspace.zip.
 3. The extension instantly parses all code files, formats them into a structured XML codebase, and injects EVERYTHING (Code + History) directly into the AI's chatbox.
+
+## ⚡ v4.0 New Feature: Token Optimizer (Context Minifier)
+Extracting massive 50,000-word chats crashes AI context limits. 
+With v4.0, you can go to **Settings** and set a **Context Limit** (e.g., Keep only the last 10 messages). The extension will automatically trim older messages, preventing AI confusion and saving your token limits!

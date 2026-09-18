@@ -4,28 +4,34 @@
     <title>AI-Bridge Settings</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; padding: 20px; max-width: 600px; margin: auto; }
-        h2 { color: #58a6ff; }
-        textarea { width: 100%; height: 250px; background: #161b22; color: #c9d1d9; border: 1px solid #30363d; padding: 10px; border-radius: 6px; font-family: monospace; font-size: 13px; resize: vertical; }
-        button { background: #238636; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px; }
+        h2 { color: #58a6ff; margin-bottom: 5px;}
+        .setting-group { margin-bottom: 20px; background: #161b22; padding: 15px; border: 1px solid #30363d; border-radius: 6px;}
+        label { font-weight: bold; font-size: 14px; display: block; margin-bottom: 8px;}
+        p.desc { font-size: 12px; color: #8b949e; margin-top: -5px; margin-bottom: 10px;}
+        input[type="number"] { background: #0d1117; color: white; border: 1px solid #30363d; padding: 6px 10px; border-radius: 4px; width: 60px; font-weight: bold;}
+        textarea { width: 100%; height: 200px; background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 13px; resize: vertical; box-sizing: border-box; }
+        button { background: #238636; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%;}
         button:hover { background: #2ea043; }
-        #status { display: inline-block; margin-left: 10px; color: #3fb950; font-size: 14px; }
+        #status { display: block; text-align: center; margin-top: 10px; color: #3fb950; font-size: 14px; min-height: 20px;}
     </style>
 </head>
 <body>
-    <h2>⚙️ AI-Bridge Mega-Prompt Settings</h2>
-    <p>Customize the prompt that is injected into the new AI. Use <code>{CONTEXT}</code> exactly where you want the chat history to be placed.</p>
+    <h2>⚙️ AI-Bridge Settings</h2>
     
-    <textarea id="promptBox">
-🔄 [SYSTEM AUTO-SYNC: AI-BRIDGE]
-You are receiving a transferred context from another AI. Read the history below and seamlessly resume the project.
-Reply ONLY with: "**[AI-Bridge Sync Complete]** 🟢 Ready for the next command!"
+    <div class="setting-group">
+        <label>⚡ Token Optimizer (Context Minifier)</label>
+        <p class="desc">How many of the latest messages should be kept? (Lower saves API tokens and prevents AI confusion. Set to 0 to extract entire history).</p>
+        <input type="number" id="contextLimit" value="10" min="0" max="1000">
+    </div>
 
---- PREVIOUS CHAT HISTORY ---
-{CONTEXT}
-    </textarea>
+    <div class="setting-group">
+        <label>🤖 Custom Mega-Prompt</label>
+        <p class="desc">Use <code>{CONTEXT}</code> for history and <code>{WORKSPACE}</code> for code.</p>
+        <textarea id="promptBox"></textarea>
+    </div>
     
-    <button id="saveBtn">Save Prompt</button>
-    <span id="status"></span>
+    <button id="saveBtn">Save Settings</button>
+    <div id="status"></div>
     
     <script src="options.js"></script>
 </body>

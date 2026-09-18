@@ -1,4 +1,4 @@
-﻿// AI-Bridge Advanced Content Script (v2.0)
+﻿// AI-Bridge Advanced Content Script (v4.0 with Token Optimizer)
 function showToast(message, isSuccess = true) {
     let toast = document.createElement('div');
     toast.innerText = message;
@@ -19,43 +19,58 @@ function showToast(message, isSuccess = true) {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'extract') {
-        let chatContext = '';
-        const url = window.location.hostname;
-        try {
-            if (url.includes('chatgpt.com')) {
-                let messages = document.querySelectorAll('[data-message-author-role]');
-                messages.forEach(msg => {
-                    let role = msg.getAttribute('data-message-author-role');
-                    let text = '';
-                    msg.childNodes.forEach(node => {
-                        if (node.nodeName === 'PRE') { text += '\n`\n' + node.innerText + '\n`\n'; } 
-                        else { text += node.innerText + '\n'; }
+        chrome.storage.local.get(['contextLimit'], (result) => {
+            let limit = result.contextLimit !== undefined ? result.contextLimit : 10;
+            let chatContext = '';
+            const url = window.location.hostname;
+            
+            try {
+                let parsedMessages = [];
+                
+                if (url.includes('chatgpt.com')) {
+                    let elements = Array.from(document.querySelectorAll('[data-message-author-role]'));
+                    if (limit > 0 && elements.length > limit) { elements = elements.slice(-limit); }
+                    
+                    elements.forEach(msg => {
+                        let role = msg.getAttribute('data-message-author-role');
+                        let text = '';
+                        msg.childNodes.forEach(node => {
+                            if (node.nodeName === 'PRE') { text += '\n`\n' + node.innerText + '\n`\n'; } 
+                            else { text += node.innerText + '\n'; }
+                        });
+                        parsedMessages.push(\n\n---  + role.toUpperCase() +  ---\n + text.trim());
                     });
-                    chatContext += \n\n---  + role.toUpperCase() +  ---\n + text.trim();
-                });
-            } else if (url.includes('claude.ai')) {
-                let messages = document.querySelectorAll('.font-user-message, .font-claude-message');
-                messages.forEach(msg => {
-                    let role = msg.className.includes('user') ? 'USER' : 'ASSISTANT';
-                    chatContext += \n\n---  + role +  ---\n + msg.innerText.trim();
-                });
-            } else {
-                chatContext = document.body.innerText.substring(0, 8000);
-            }
+                } else if (url.includes('claude.ai')) {
+                    let elements = Array.from(document.querySelectorAll('.font-user-message, .font-claude-message'));
+                    if (limit > 0 && elements.length > limit) { elements = elements.slice(-limit); }
+                    
+                    elements.forEach(msg => {
+                        let role = msg.className.includes('user') ? 'USER' : 'ASSISTANT';
+                        parsedMessages.push(\n\n---  + role +  ---\n + msg.innerText.trim());
+                    });
+                } else {
+                    parsedMessages.push(document.body.innerText.substring(0, 8000));
+                }
 
-            if (!chatContext || chatContext.trim() === '') {
-                showToast("AI-Bridge: No chat found to extract!", false);
-                return sendResponse({ success: false });
-            }
+                if (parsedMessages.length === 0) {
+                    showToast("AI-Bridge: No chat found to extract!", false);
+                    return sendResponse({ success: false });
+                }
+                
+                if (limit > 0) {
+                    chatContext = [⚡ SYSTEM NOTE: Chat context minified to the last  + limit +  messages to save tokens]\n;
+                }
+                chatContext += parsedMessages.join('');
 
-            chrome.runtime.sendMessage({ action: 'saveContext', data: chatContext }, () => {
-                showToast("🌉 AI-Bridge: Context Extracted Successfully!");
-                sendResponse({ success: true });
-            });
-        } catch (e) {
-            showToast("AI-Bridge Error: " + e.message, false);
-            sendResponse({ success: false });
-        }
+                chrome.runtime.sendMessage({ action: 'saveContext', data: chatContext }, () => {
+                    showToast("🌉 AI-Bridge: Context Extracted (" + parsedMessages.length + " Msgs)!");
+                    sendResponse({ success: true });
+                });
+            } catch (e) {
+                showToast("AI-Bridge Error: " + e.message, false);
+                sendResponse({ success: false });
+            }
+        });
         return true;
     } 
     else if (request.action === 'inject') {
@@ -91,10 +106,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
         return true;
     }
-});
-// Append to content.js
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'inject_payload') {
+    else if (request.action === 'inject_payload') {
         let megaPrompt = request.payload;
         navigator.clipboard.writeText(megaPrompt).then(() => {
             let inputBox = document.querySelector('textarea, [contenteditable="true"], #prompt-textarea');
