@@ -1,0 +1,25 @@
+﻿{
+  "manifest_version": 3,
+  "name": "AI-Bridge: Context Transfer",
+  "version": "1.0",
+  "description": "Seamlessly transfer chat context between ChatGPT, Claude, and Gemini.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "*://chatgpt.com/*",
+    "*://claude.ai/*",
+    "*://gemini.google.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AI-Bridge Transfer"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://chatgpt.com/*", "*://claude.ai/*", "*://gemini.google.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+﻿<div align="center">
+  <img src="https://img.shields.io/github/license/almuzahidseyam/AI-Bridge?style=flat-square&color=blue" alt="License">
+  <h1>🌉 AI-Bridge</h1>
+  <p><b>Seamlessly transfer AI Chat Contexts between ChatGPT, Claude, and Gemini.</b></p>
+</div>
+
+## 🚀 The Problem: Vendor Lock-in
+Have you ever started a massive project in ChatGPT, only to realize Claude handles coding better? Manually copying files, prompts, and chat histories across different AIs is a nightmare. 
+
+**AI-Bridge** solves this by letting you extract the "brain" (context) of one AI and inject it directly into another with a single click.
+
+## ✨ Features
+* 📦 **Chrome Extension:** 1-click Export & Inject directly from the browser.
+* 🐍 **Python Packager CLI:** Bundle actual local workspace files into an AI-readable Zip.
+* 🧠 **Mega-Prompt Engineering:** Auto-initializes the receiving AI to resume work without generic greetings.
+* 🖥️ **React DOM Hijacking:** Smoothly pastes context into modern AI chatboxes.
+
+## 🛠️ Installation (Chrome Extension)
+1. Clone this repository.
+2. Go to chrome://extensions/ in your Chrome browser.
+3. Enable **Developer mode** in the top right.
+4. Click **Load unpacked** and select the extension folder.
+
+## 💻 Usage (Extension)
+1. Open your active chat in ChatGPT or Claude.
+2. Click the **AI-Bridge** extension icon and press **Extract Chat Context**.
+3. Open a new tab in your target AI (e.g., Claude).
+4. Click **Inject into New AI**. The context is instantly pasted! Just hit Send.
+
+---
+*Built with ❤️ for Open Source.*
+
+## 📝 License
+This project is proudly open-source and licensed under the **MIT License**. Copyright (c) 2026 Muhammad Al-Muzahid.
+
