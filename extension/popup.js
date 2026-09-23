@@ -1,4 +1,4 @@
-﻿// AI-Bridge v7.0 (Security & Stability)
+// AI-Bridge v7.0 (Security & Stability)
 
 function handleLivenessError(statusElement) {
     if (chrome.runtime.lastError) {
@@ -136,12 +136,12 @@ document.getElementById('zipPicker').addEventListener('change', async (event) =>
             if (textExtensions.includes(ext) || !relativePath.includes('.')) {
                 if (zipEntry._data && zipEntry._data.uncompressedSize > 1048576) continue;
                 let fileData = await zipEntry.async("string");
-                workspaceMarkdown += \n### FILE:  + relativePath + \n\\\${ext}\n + fileData + \n\\\\n;
+                workspaceMarkdown += `\n### FILE: ` + relativePath + `\n\`\`\`${ext}\n` + fileData + `\n\`\`\`\n`;
             }
         }
 
         chrome.storage.local.get(['customPrompt'], async (result) => {
-            let defaultPrompt = 🔄 [SYSTEM AUTO-SYNC: AI-BRIDGE]\nYou are receiving a transferred context from another AI. Read the history and workspace codebase below to seamlessly resume the project.\nReply ONLY with: "**[AI-Bridge Sync Complete]** 🟢 Ready for the next command!"\n\n--- PREVIOUS CHAT HISTORY ---\n{CONTEXT}\n\n--- CURRENT WORKSPACE CODEBASE ---\n{WORKSPACE};
+            let defaultPrompt = `🔄 [SYSTEM AUTO-SYNC: AI-BRIDGE]\nYou are receiving a transferred context from another AI. Read the history and workspace codebase below to seamlessly resume the project.\nReply ONLY with: "**[AI-Bridge Sync Complete]** 🟢 Ready for the next command!"\n\n--- PREVIOUS CHAT HISTORY ---\n{CONTEXT}\n\n--- CURRENT WORKSPACE CODEBASE ---\n{WORKSPACE}`;
             
             let template = result.customPrompt || defaultPrompt;
             if (!template.includes('{WORKSPACE}')) {

@@ -1,4 +1,4 @@
-﻿// AI-Bridge Advanced Content Script (v7.0 Security & Stability)
+// AI-Bridge Advanced Content Script (v7.0 Security & Stability)
 
 function showToast(message, isSuccess = true) {
     let toast = document.createElement('div');
@@ -33,21 +33,21 @@ function nativeTypingSimulation(payloadText) {
     if (!success) {
         console.warn("AI-Bridge: execCommand failed, falling back to React hack...");
         let script = document.createElement('script');
-        script.textContent = 
+        script.textContent = `
             (function() {
                 let box = document.querySelector('textarea, [contenteditable="true"], #prompt-textarea, rich-textarea, .ql-editor');
                 if (box) {
-                    if (box.tagName === 'TEXTAREA') { box.value =  + JSON.stringify(payloadText) + ; } 
-                    else { box.innerText =  + JSON.stringify(payloadText) + ; }
+                    if (box.tagName === 'TEXTAREA') { box.value = ` + JSON.stringify(payloadText) + `; } 
+                    else { box.innerText = ` + JSON.stringify(payloadText) + `; }
                     box.dispatchEvent(new Event('input', { bubbles: true }));
                     box.dispatchEvent(new Event('change', { bubbles: true }));
-                    let reactProps = Object.keys(box).find(k => k.startsWith('__reactProps$'));
+                    let reactProps = Object.keys(box).find(k => k.startsWith('__reactProps\$'));
                     if (reactProps && box[reactProps].onChange) {
                         box[reactProps].onChange({target: box});
                     }
                 }
             })();
-        ;
+        `;
         document.documentElement.appendChild(script);
         script.remove();
     }
@@ -103,7 +103,7 @@ function extractChatHeuristically(limit) {
             else text += node.innerText + '\n';
         });
         
-        parsedMessages.push(\n\n---  + role +  ---\n + (text.trim() || msg.innerText.trim()));
+        parsedMessages.push(`\n\n--- ` + role + ` ---\n` + (text.trim() || msg.innerText.trim()));
     });
     return parsedMessages;
 }
@@ -120,7 +120,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 }
                 
                 let chatContext = "";
-                if (limit > 0) chatContext = [⚡ SYSTEM NOTE: Chat context minified to the last  + limit +  messages]\n;
+                if (limit > 0) chatContext = `[⚡ SYSTEM NOTE: Chat context minified to the last ` + limit + ` messages]\n`;
                 chatContext += parsedMessages.join('');
 
                 chrome.storage.local.set({ aiBridgeContext: chatContext }, () => {
@@ -141,7 +141,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     else if (request.action === 'inject' || request.action === 'inject_payload') {
         chrome.storage.local.get(['aiBridgeContext', 'customPrompt'], (result) => {
             let context = result.aiBridgeContext || "No history.";
-            let defaultPrompt = 🔄 [SYSTEM AUTO-SYNC: AI-BRIDGE]\nYou are receiving a transferred context from another AI. Read the history below and seamlessly resume the project.\nReply ONLY with: "**[AI-Bridge Sync Complete]** 🟢 Ready for the next command!"\n\n--- PREVIOUS CHAT HISTORY ---\n{CONTEXT};
+            let defaultPrompt = `🔄 [SYSTEM AUTO-SYNC: AI-BRIDGE]\nYou are receiving a transferred context from another AI. Read the history below and seamlessly resume the project.\nReply ONLY with: "**[AI-Bridge Sync Complete]** 🟢 Ready for the next command!"\n\n--- PREVIOUS CHAT HISTORY ---\n{CONTEXT}`;
             
             let megaPromptTemplate = result.customPrompt || defaultPrompt;
             let megaPrompt = request.payload || megaPromptTemplate.replace('{CONTEXT}', context);
