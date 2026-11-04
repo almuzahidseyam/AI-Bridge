@@ -121,6 +121,19 @@ class PackageTests(unittest.TestCase):
         with zipfile.ZipFile(output) as archive:
             self.assertIn(b"reference material", archive.read("00_READ_ME_FIRST.md"))
 
+    @unittest.skipUnless(os.name == "nt", "Windows path aliases")
+    def test_windows_short_temp_path_context_boundary(self):
+        import ctypes
+        folder = self.base / "long folder for context"
+        folder.mkdir()
+        history = folder / "history.txt"
+        history.write_text("review this", encoding="utf-8")
+        buffer = ctypes.create_unicode_buffer(32768)
+        length = ctypes.windll.kernel32.GetShortPathNameW(str(history), buffer, len(buffer))
+        self.assertGreater(length, 0)
+        plan = bridge.plan_package(self.root, history_file=buffer.value)
+        self.assertIn("context/chat_history.txt", [entry.name for entry in plan.entries])
+
 
 if __name__ == "__main__":
     unittest.main()

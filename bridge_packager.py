@@ -56,11 +56,14 @@ def read_snapshot(path: Path, root: Path) -> bytes:
     """Reject links and obvious concurrent replacements before taking a bounded snapshot."""
     if linked(path) or not path.resolve().is_relative_to(root):
         raise ValueError("Linked or external path")
-    parent = path.parent
-    while parent != root:
+    for parent in path.parents:
         if linked(parent):
             raise ValueError("Linked parent")
-        parent = parent.parent
+        # Windows TEMP may use an 8.3 alias (RUNNER~1); compare canonical paths.
+        if parent.resolve() == root:
+            break
+    else:
+        raise ValueError("No matching workspace boundary")
     before = path.lstat()
     if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1:
         raise ValueError("Not a regular single-link file")
