@@ -1,34 +1,8 @@
 {
   "manifest_version": 3,
   "name": "AI-Bridge: Context Transfer",
-  "version": "7.0",
-  "description": "Seamlessly transfer chat context between ChatGPT, Claude, Gemini, Perplexity, and HuggingFace. Features Smart Heuristics and Security Firewalls.",
-  "permissions": ["activeTab", "scripting", "storage", "downloads", "unlimitedStorage"],
-  "host_permissions": [
-    "*://chatgpt.com/*",
-    "*://claude.ai/*",
-    "*://gemini.google.com/*",
-    "*://www.perplexity.ai/*",
-    "*://huggingface.co/*"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "action": {
-    "default_popup": "popup.html",
-    "default_title": "AI-Bridge Transfer"
-  },
-  "options_page": "options.html",
-  "content_scripts": [
-    {
-      "matches": [
-        "*://chatgpt.com/*", 
-        "*://claude.ai/*", 
-        "*://gemini.google.com/*",
-        "*://www.perplexity.ai/*",
-        "*://huggingface.co/chat/*"
-      ],
-      "js": ["content.js"]
-    }
-  ]
+  "version": "8.0.0",
+  "description": "Review a bounded context snapshot, download it locally or insert it into an empty chat draft. Never auto-sends.",
+  "permissions": ["activeTab", "scripting"],
+  "action": {"default_popup": "popup.html", "default_title": "AI-Bridge"}
 }

@@ -1,0 +1,11 @@
+{
+  "name": "ai-bridge-verification",
+  "private": true,
+  "version": "8.0.0",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser.cjs",
+    "check": "node --check extension/popup.js && node --check extension/content.js"
+  },
+  "devDependencies": {"jszip":"3.10.1","playwright":"1.64.1"}
+}

@@ -1,14 +1,6 @@
-# build output -- releases belong in GitHub Releases, not the tree
-*.zip
-!AI-Bridge-Extension-v*.zip
-
-# local scratch
-dummy_project/
-dummy_chat.txt
-dummy_memory.md
-
-# editors / OS
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+AI_Bridge_Export*.zip
+test-results/
